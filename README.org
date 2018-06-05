@@ -1,0 +1,8 @@
+#+TITLE: Egon
+
+[[./doc/egon.png]]
+
+- Janine :: Do you have any hobbies?
+- Egon :: I collect spores, molds and fungus.
+
+**** Egon is a micro library which interfaces with Amazon S3 for simple read, write, and delete operations.
