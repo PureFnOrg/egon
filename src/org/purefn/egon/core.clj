@@ -208,5 +208,25 @@
 ;;--------------------------------------------------------------------
 
 (defn s3
+   "Returns a new S3Client component for config, a map of:
+
+    * :creds                 API credentials, a map with :access-key
+                             and :secret-key. Note this is will be
+                             ignored when running in k8s in favor of
+                             the k8s secrets.
+    * :bucket-suffix         String that will be added to each bucket
+                             name, intended to assist with environment
+                             separation. It is transparently added on
+                             key reads and writes, so clients should
+                             only refer to the unsuffixed bucket name.
+    * :buckets               A collection of string bucket names used
+                             by the component. Each will be created on
+                             startup if they don't exist.
+    * :initial-delay-ms      Integer number of milliseconds to wait
+                             for the first retry of failures (other
+                             than unreachable network failures).
+    * :unreachable-delay-ms  Integer number of milliseconds to wait
+                             for retry of unreachable network failures.
+    * :max-retries           Integer max number of retries of failure."
   ([{:keys [cred] :as config}]
    (->S3Client #(s3-client cred) (dissoc config :cred))))
