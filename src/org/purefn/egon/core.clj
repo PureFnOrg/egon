@@ -206,14 +206,14 @@
 
 (spec/def ::access-key string?)
 (spec/def ::secret-key string?)
-(spec/def ::creds (s/keys :req-un [::access-key ::secret-key]))
+(spec/def ::creds (spec/keys :req-un [::access-key ::secret-key]))
 (spec/def ::bucket-sufix string?)
-(spec/def ::buckets (s/coll-of string?))
+(spec/def ::buckets (spec/coll-of string?))
 (spec/def ::initial-delay-ms pos-int?)
 (spec/def ::unreachable-delay-ms pos-int?)
 (spec/def ::max-retries pos-int?)
-(spec/def ::config (s/keys :req-un [::creds ::bucket-suffix ::buckets
-                                    ::initial-delay-ms ::unreachable-delay-ms ::max-retries]))
+(spec/def ::config (spec/keys :req-un [::creds ::bucket-suffix ::buckets
+                                       ::initial-delay-ms ::unreachable-delay-ms ::max-retries]))
 
 ;;--------------------------------------------------------------------
 ;; Construction
