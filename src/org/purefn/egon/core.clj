@@ -15,10 +15,12 @@
    [org.purefn.kurosawa.result :refer :all]
    [taoensso.timbre :as log])
   (:import
-   [com.amazonaws SdkClientException]
-   [com.amazonaws.auth BasicAWSCredentials]
-   [com.amazonaws.services.s3 AmazonS3Client]
-   [com.amazonaws.services.s3.model AmazonS3Exception]))
+   (com.amazonaws SdkClientException)
+   (com.amazonaws.auth AWSCredentials
+                       BasicAWSCredentials
+                       DefaultAWSCredentialsProviderChain)
+   (com.amazonaws.services.s3 AmazonS3Client)
+   (com.amazonaws.services.s3.model AmazonS3Exception)))
 
 ;;--------------------------------------------------------------------
 ;; Error handing
@@ -189,6 +191,17 @@
 ;; Configuration
 ;;--------------------------------------------------------------------
 
+(defn environment-credentials
+  "Attempts to extract AWS credentials from the environment, using the
+   AWS SDK default provider chain. Returns a map of :access-key
+   and :secret-key or nil if no credentials are located."
+  []
+  (let [provider (DefaultAWSCredentialsProviderChain/getInstance)]
+    (when-let [^AWSCredentials creds (try (.getCredentials provider)
+                                          (catch Exception _ nil))]
+      {:access-key (.getAWSAccessKeyId creds)
+       :secret-key (.getAWSSecretKey creds)})))
+
 (defn default-config
   ([name]
    (let [k8-config
@@ -206,14 +219,14 @@
 
 (spec/def ::access-key string?)
 (spec/def ::secret-key string?)
-(spec/def ::creds (s/keys :req-un [::access-key ::secret-key]))
+(spec/def ::creds (spec/keys :req-un [::access-key ::secret-key]))
 (spec/def ::bucket-sufix string?)
-(spec/def ::buckets (s/coll-of string?))
+(spec/def ::buckets (spec/coll-of string?))
 (spec/def ::initial-delay-ms pos-int?)
 (spec/def ::unreachable-delay-ms pos-int?)
 (spec/def ::max-retries pos-int?)
-(spec/def ::config (s/keys :req-un [::creds ::bucket-suffix ::buckets
-                                    ::initial-delay-ms ::unreachable-delay-ms ::max-retries]))
+(spec/def ::config (spec/keys :req-un [::creds ::bucket-suffix ::buckets
+                                       ::initial-delay-ms ::unreachable-delay-ms ::max-retries]))
 
 ;;--------------------------------------------------------------------
 ;; Construction
