@@ -15,10 +15,12 @@
    [org.purefn.kurosawa.result :refer :all]
    [taoensso.timbre :as log])
   (:import
-   [com.amazonaws SdkClientException]
-   [com.amazonaws.auth BasicAWSCredentials]
-   [com.amazonaws.services.s3 AmazonS3Client]
-   [com.amazonaws.services.s3.model AmazonS3Exception]))
+   (com.amazonaws SdkClientException)
+   (com.amazonaws.auth AWSCredentials
+                       BasicAWSCredentials
+                       DefaultAWSCredentialsProviderChain)
+   (com.amazonaws.services.s3 AmazonS3Client)
+   (com.amazonaws.services.s3.model AmazonS3Exception)))
 
 ;;--------------------------------------------------------------------
 ;; Error handing
@@ -188,6 +190,17 @@
 ;;--------------------------------------------------------------------
 ;; Configuration
 ;;--------------------------------------------------------------------
+
+(defn environment-credentials
+  "Attempts to extract AWS credentials from the environment, using the
+   AWS SDK default provider chain. Returns a map of :access-key
+   and :secret-key or nil if no credentials are located."
+  []
+  (let [provider (DefaultAWSCredentialsProviderChain/getInstance)]
+    (when-let [^AWSCredentials creds (try (.getCredentials provider)
+                                          (catch Exception _ nil))]
+      {:access-key (.getAWSAccessKeyId creds)
+       :secret-key (.getAWSSecretKey creds)})))
 
 (defn default-config
   ([name]
