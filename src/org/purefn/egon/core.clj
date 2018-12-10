@@ -2,6 +2,7 @@
   (:require
    [clojure.edn :as edn]
    [clojure.string :as str]
+   [clojure.spec.alpha :as spec]
    [com.stuartsierra.component :as component]
    [org.purefn.egon.api :as api]
    [org.purefn.egon.protocol :as proto]
@@ -33,12 +34,12 @@
 
     (and (instance? AmazonS3Exception ex)
          (str/includes? (.getMessage ex) "Status Code: 403")) ::api/auth-failed
-    
+
     (and (instance? SdkClientException ex)
          (or (instance? java.net.UnknownHostException (.getCause ex))
              (instance? org.apache.http.conn.HttpHostConnectException (.getCause ex))))
     ::api/server-unreachable
-    
+
     :default ::api/fatal))
 
 (def ^:private snafu
@@ -203,10 +204,42 @@
             k8-config)))
   ([] (default-config "s3")))
 
+(spec/def ::access-key string?)
+(spec/def ::secret-key string?)
+(spec/def ::creds (s/keys :req-un [::access-key ::secret-key]))
+(spec/def ::bucket-sufix string?)
+(spec/def ::buckets (s/coll-of string?))
+(spec/def ::initial-delay-ms pos-int?)
+(spec/def ::unreachable-delay-ms pos-int?)
+(spec/def ::max-retries pos-int?)
+(spec/def ::config (s/keys :req-un [::creds ::bucket-suffix ::buckets
+                                    ::initial-delay-ms ::unreachable-delay-ms ::max-retries]))
+
 ;;--------------------------------------------------------------------
 ;; Construction
 ;;--------------------------------------------------------------------
 
 (defn s3
+   "Returns a new S3Client component for config, a map of:
+
+    * :creds                 API credentials, a map with :access-key
+                             and :secret-key. Note this is will be
+                             ignored when running in k8s in favor of
+                             the k8s secrets.
+    * :bucket-suffix         String that will be added to each bucket
+                             name, intended to assist with environment
+                             separation. It is transparently added on
+                             key reads and writes, so clients should
+                             only refer to the unsuffixed bucket name.
+    * :buckets               A collection of string bucket names used
+                             by the component. Each will be created on
+                             startup if they don't exist.
+    * :initial-delay-ms      Integer number of milliseconds to wait
+                             for the first retry of failures (other
+                             than unreachable network failures).
+    * :unreachable-delay-ms  Integer number of milliseconds to wait
+                             for retry of unreachable network failures.
+    * :max-retries           Integer max number of retries of failure."
   ([{:keys [cred] :as config}]
+   (spec/assert ::config config)
    (->S3Client #(s3-client cred) (dissoc config :cred))))
