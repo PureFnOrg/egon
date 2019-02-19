@@ -1,12 +1,12 @@
 (ns org.purefn.egon.core
   (:require
    [clojure.edn :as edn]
-   [clojure.string :as str]
    [clojure.spec.alpha :as spec]
+   [clojure.string :as str]
    [com.stuartsierra.component :as component]
    [org.purefn.egon.api :as api]
-   [org.purefn.egon.protocol :as proto]
    [org.purefn.egon.interop :as interop]
+   [org.purefn.egon.protocol :as proto]
    [org.purefn.kurosawa.error :as error]
    [org.purefn.kurosawa.k8s :as k8s]
    [org.purefn.kurosawa.log.api :as log-api]
@@ -15,7 +15,8 @@
    [org.purefn.kurosawa.result :refer :all]
    [taoensso.timbre :as log])
   (:import
-   (com.amazonaws SdkClientException)
+   (com.amazonaws SdkClientException
+                  AmazonServiceException)
    (com.amazonaws.auth AWSCredentials
                        BasicAWSCredentials
                        DefaultAWSCredentialsProviderChain)
@@ -28,14 +29,18 @@
 
 (defn- reason
   [ex]
+  (log/info ex)
   (cond
     (instance? clojure.lang.ExceptionInfo ex) (::api/reason (ex-data ex) ::api/fatal)
 
-    (and (instance? AmazonS3Exception ex)
-         (str/includes? (.getMessage ex) "Status Code: 404")) ::api/doc-missing
+    (and (instance? AmazonServiceException ex)
+         (str/includes? (.getMessage ex) "Status Code: 404"))
+     ::api/doc-missing
 
-    (and (instance? AmazonS3Exception ex)
-         (str/includes? (.getMessage ex) "Status Code: 403")) ::api/auth-failed
+     (and (instance? AmazonServiceException ex)
+          (or (= (.getErrorCode ex) "AuthorizationHeaderMalformed")
+              (str/includes? (.getMessage ex) "Status Code: 403")))
+     ::api/auth-failed
 
     (and (instance? SdkClientException ex)
          (or (instance? java.net.UnknownHostException (.getCause ex))
@@ -44,8 +49,21 @@
 
     :default ::api/fatal))
 
-(def ^:private snafu
-  (partial error/snafu reason ::api/reason ::api/fatal))
+(defn snafu
+  [msg mp]
+  (fn [ex]
+    (let [rsn (reason ex)
+          smp (cond-> (assoc mp ::api/reason rsn)
+                (instance? AmazonServiceException ex)
+                (assoc :aws-code (.getErrorCode ex)
+                       :aws-message (.getErrorMessage ex)))
+          exi (ex-info msg smp ex)]
+      (log/info exi)
+      (case rsn
+        ::api/fatal (log/error exi)
+        ::api/doc-missing (log/debug (klog/format-msg msg smp))
+        (log/warn (klog/format-msg msg smp)))
+      (fail exi))))
 
 ;;--------------------------------------------------------------------
 ;; S3 helpers
@@ -76,7 +94,7 @@
   (.listObjects client request))
 
 (defn- bucket-exists? [bucket ^AmazonS3Client client]
-  (.doesBucketExist client bucket))
+  (log/spy :info (.doesBucketExist client bucket)))
 
 (defn- bucket-name [{{:keys [bucket-suffix buckets]} :config} name]
   (if (some #{name} buckets)
@@ -114,6 +132,7 @@
 
   component/Lifecycle
   (start [this]
+    (log/info "starting")
     (doseq [bucket (:buckets config)
             :let [bucket-name (success (bucket-name this bucket))]]
       (when (and bucket-name (not (proto/bucket-exists? this bucket)))
@@ -235,7 +254,7 @@
 (defn s3
    "Returns a new S3Client component for config, a map of:
 
-    * :creds                 API credentials, a map with :access-key
+    * :cred                  API credentials, a map with :access-key
                              and :secret-key. Note this is will be
                              ignored when running in k8s in favor of
                              the k8s secrets.
@@ -255,4 +274,5 @@
     * :max-retries           Integer max number of retries of failure."
   ([{:keys [cred] :as config}]
    (spec/assert ::config config)
+   (log/info cred)
    (->S3Client #(s3-client cred) (dissoc config :cred))))

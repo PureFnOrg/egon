@@ -13,8 +13,8 @@
    :s3 (s3/s3 (merge (s3/default-config)
                      {:cred
                       
-                      {:access-key "",
-                       :secret-key ""}
+                      {:access-key "AKIAIO7JBQLTH72QKCYA",
+                       :secret-key "+6FiDf0Wq61kXGVHnPhUs0xf2c0"}
 
                       :buckets ["maxmind-db"]}))))
 
