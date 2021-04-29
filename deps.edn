@@ -1,0 +1,11 @@
+{
+ :paths   ["src"],
+ :deps    {org.clojure/clojure             #:mvn{:version "1.9.0"},
+           com.taoensso/timbre             #:mvn{:version "4.7.4"},
+           org.purefn/kurosawa                  {:mvn/version "2.1.6"},
+           com.amazonaws/aws-java-sdk-core #:mvn{:version "1.11.462"},
+           com.amazonaws/aws-java-sdk-s3   #:mvn{:version "1.11.462"}}
+ :aliases {:dev {:extra-paths ["dev"]
+                 :extra-deps
+                 {org.clojure/tools.namespace     {:mvn/version "0.2.11"},
+                  com.stuartsierra/component.repl {:mvn/version "0.2.0"}}}}}
