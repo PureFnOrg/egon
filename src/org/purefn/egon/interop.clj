@@ -3,7 +3,8 @@
   (:import
    [com.amazonaws.services.s3.model
     Bucket Owner ObjectMetadata S3Object PutObjectRequest
-    ObjectListing ListObjectsRequest S3ObjectSummary]
+    ObjectListing ListObjectsRequest S3ObjectSummary
+    GetObjectRequest]
    [java.io File InputStream ByteArrayInputStream]))
 
 ;; to-map
@@ -100,6 +101,11 @@
        (doto (ObjectMetadata.)
          (.setContentType "application/edn")
          (.setContentLength (alength bytes)))])))
+
+(defn get-request [bucket key version-id]
+  (if version-id
+    (GetObjectRequest. bucket key version-id)
+    (GetObjectRequest. bucket key)))
 
 (defn put-request [bucket key data meta-data]
   (let [[in meta] (format-data data)]

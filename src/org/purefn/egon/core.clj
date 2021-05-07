@@ -64,8 +64,8 @@
   (.putObject client request))
 
 (defn- get-object
-  [bucket key ^AmazonS3Client client]
-  (.getObject client bucket key))
+  ([request ^AmazonS3Client client]
+   (.getObject client request)))
 
 (defn- delete-object
   [bucket key ^AmazonS3Client client]
@@ -148,12 +148,13 @@
   (store [this bucket key value meta]
     (-> (retry this #(proto/store* this bucket key value meta))
         (success)))
-  
+
   (fetch* [this bucket key opts]
     (log/info "Fetching :key" key "in :bucket" bucket)
     (let [xform (if (contains? opts :meta) identity (partial :content))]
       (-> (bucket-name this bucket)
-          (proceed get-object key (client))
+          (proceed interop/get-request key (:version-id opts))
+          (proceed get-object (client))
           (proceed interop/to-map)
           (proceed read-object)
           (proceed xform)

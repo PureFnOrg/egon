@@ -5,7 +5,7 @@
 
 (defn list-keys
   "Lists all of the keys in the specified s3 bucket."
-  [s3 bucket] 
+  [s3 bucket]
   (proto/list-keys s3 bucket))
 
 (defn bucket-exists?
@@ -21,13 +21,20 @@
   [s3 bucket key value & {:keys [meta]}]
   (proto/store s3 bucket key value meta))
 
+(defn parse-opts [opts]
+  (if (even? (count opts))
+    (apply hash-map opts)
+    (set opts)))
+
 (defn fetch
-  "Fetches a document from an s3 bucket.  Accepts an optional sequence of keywords:
+   "Fetches a document from an s3 bucket.  Accepts optional args:
   :meta - indicates whether to return metadata long with the document content.
           When supplied, and map is returned with the the document as the :content
-          key and metadata as other keys in the map."
+          key and metadata as other keys in the map. Can be passed as single keyword if
+          no other args are used, otherwise follow by true or false.
+   :version-id - follow by S3 version-id to fetch a particular version"
   [s3 bucket key & opts]
-  (proto/fetch s3 bucket key (set opts)))
+  (proto/fetch s3 bucket key (parse-opts opts)))
 
 (defn destroy
   "Deletes a document from an s3 bucket."
@@ -50,11 +57,11 @@
 
   Returns the s3 object wrapped in a `Success` object if successful, `Failure` if not."
   [s3 bucket key & opts]
-  (proto/fetch* s3 bucket key (set opts)))
+  (proto/fetch* s3 bucket key (parse-opts opts)))
 
 (defn destroy*
   "Deletes a document from an s3 bucket.
-  
+
   Returns an AWS `DeleteObjectResult` wrapped in a `Success` object if successful, `Failure` if not."
   [s3 bucket key]
   (proto/destroy* s3 bucket key))
