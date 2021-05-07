@@ -1,4 +1,4 @@
-(defproject org.purefn/egon "0.2.5-SNAPSHOT"
+(defproject org.purefn/egon "0.2.5"
   :description "Interface to Amazon S3"
   :dependencies [[org.clojure/clojure "1.9.0" :scope "provided"]
                  [com.taoensso/timbre "4.7.4"]
